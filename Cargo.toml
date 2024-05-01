@@ -1,0 +1,7 @@
+[package]
+name = "kernel-dumper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+x86_64 = { version = "0.15.1", features = ["instructions"], default-features = false }
