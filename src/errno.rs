@@ -1,6 +1,4 @@
 //! Copied from https://github.com/obhq/obliteration.
-use core::convert::Infallible;
-use core::hint::unreachable_unchecked;
 use core::num::NonZeroI32;
 
 macro_rules! error_numbers {
@@ -12,13 +10,6 @@ macro_rules! error_numbers {
                 NonZeroI32::new_unchecked($num)
             };
         )*
-
-        fn strerror_impl(num: NonZeroI32) -> &'static str {
-            match num {
-                $( $name => $desc, )*
-                _ => todo!("strerror {num}", num = num.get()),
-            }
-        }
     };
 }
 
@@ -122,22 +113,4 @@ error_numbers! {
     ENOPLAYGOENT (97) => "file not found in PlayGo chunk definition file",
     EREVOKE(98) => "file is revoked",
     ESDKVERSION(99) => "SDK version of a binary file is invalid",
-}
-
-/// An object that is mappable to PS4 errno.
-pub trait Errno: Send + Sync {
-    fn errno(&self) -> NonZeroI32;
-}
-
-impl Errno for Infallible {
-    fn errno(&self) -> NonZeroI32 {
-        // SAFETY: This is safe because Infallible type guarantee its value cannot be constructed,
-        // which imply this method cannot be called because it required a value of Infallible type.
-        unsafe { unreachable_unchecked() };
-    }
-}
-
-/// Get human readable text.
-pub fn strerror(num: NonZeroI32) -> &'static str {
-    strerror_impl(num)
 }

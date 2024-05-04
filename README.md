@@ -4,7 +4,7 @@ Kernel Dumper is a payload for PS4 kernel to dump the kernel. Only 11.00 is supp
 
 ## Setup
 
-Plug a USB drive to the PS4 and make sure the PS4 can write some files to it. You can test this by copy some game screenshots to it to see if is success without any errors.
+Plug a USB drive to the PS4 and make sure the PS4 can write some files to it. You can test this by copy some game screenshots to it to see if it success without any errors.
 
 ## Running
 
