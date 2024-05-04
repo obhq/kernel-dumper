@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Check Rust styles
+      run: cargo fmt --check
+    - name: Install Rust components
+      run: rustup component add rust-src llvm-tools
+    - name: Install Cargo commands
+      run: cargo install --git https://github.com/rust-embedded/cargo-binutils.git
+    - name: Build
+      run: cargo objcopy -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --release release -- -O binary kernel-dumper.bin
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-dumper
+        path: kernel-dumper.bin
