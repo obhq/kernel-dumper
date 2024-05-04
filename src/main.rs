@@ -13,7 +13,6 @@ use x86_64::VirtAddr;
 
 mod errno;
 mod fs;
-mod pcpu;
 mod thread;
 
 // The job of this custom entry point is:

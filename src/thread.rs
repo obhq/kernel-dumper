@@ -1,4 +1,4 @@
-use crate::pcpu::CpuContext;
+use core::arch::asm;
 
 /// Implementation of `thread` structure.
 #[repr(C)]
@@ -9,7 +9,13 @@ pub struct Thread {
 
 impl Thread {
     pub fn current() -> *mut Self {
-        unsafe { (*CpuContext::current()).thread() }
+        let mut p;
+
+        unsafe {
+            asm!("mov {}, gs:[0]", out(reg) p, options(readonly, pure, preserves_flags, nostack))
+        };
+
+        p
     }
 
     pub fn ret(&self) -> &[u64; 2] {

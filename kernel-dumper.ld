@@ -11,12 +11,16 @@ SECTIONS {
         *(.text.*)
     }
 
-    .rodata : {
+    .bss : {
+        *(.bss.*)
+    }
+
+    .relro : {
         *(.rela.dyn)
     }
 
-    .bss : {
-        *(.bss.*)
+    .rodata : {
+        *(.rodata.*)
     }
 
     /DISCARD/ : {

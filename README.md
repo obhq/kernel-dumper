@@ -14,18 +14,18 @@ sudo python3 pppwn.py --interface=enp0s3 --fw=1100 --stage2=kernel-dumper.bin
 
 ### Prerequisites
 
-- Rust on the latest stable channel
+- Rust on nightly channel
 
-### Enable x86_64-unknown-none target
+### Install additional Rust component
 
 ```sh
-rustup target add x86_64-unknown-none
+rustup component add rust-src
 ```
 
 ### Install additional Cargo commands
 
 ```sh
-cargo install cargo-binutils
+cargo install --git https://github.com/rust-embedded/cargo-binutils.git
 ```
 
 `cargo-binutils` required additional dependency which can be installed with the following command:
@@ -37,7 +37,7 @@ rustup component add llvm-tools
 ### Build
 
 ```sh
-cargo objcopy --release -- -O binary kernel-dumper.bin
+cargo objcopy -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --release release -- -O binary kernel-dumper.bin
 ```
 
 ## License
