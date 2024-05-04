@@ -126,7 +126,8 @@ pub extern "C" fn main(_: *const u8) {
     }
 
     // Dump.
-    let mut data = unsafe { core::slice::from_raw_parts(base.as_ptr::<u8>(), end) };
+    let len = end - (base.as_u64() as usize);
+    let mut data = unsafe { core::slice::from_raw_parts(base.as_ptr::<u8>(), len) };
 
     while !data.is_empty() {
         // Write file.
