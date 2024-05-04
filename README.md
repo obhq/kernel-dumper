@@ -14,7 +14,7 @@ You need to use TheFloW [PPPwn](https://github.com/TheOfficialFloW/PPPwn) with `
 sudo python3 pppwn.py --interface=enp0s3 --fw=1100 --stage2=kernel-dumper.bin
 ```
 
-Wait for a notification `Dump completed!` then shutdown the PS4 (not putting it into rest mode). Once the PS4 completely shutdown unplug the USB drive to grab `kernel.elf`.
+Wait for a notification `Dump completed!`. This may take a couple of minutes depend on how fast is your USB drive. Then shutdown the PS4 (not putting it into rest mode). Once the PS4 completely shutdown unplug the USB drive to grab `kernel.elf`.
 
 ## Building from source
 
