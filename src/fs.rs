@@ -19,8 +19,29 @@ pub fn open(path: &CStr, flags: OpenFlags, mode: c_int) -> Result<OwnedFd, NonZe
     }
 }
 
+pub fn write(fd: c_int, buf: *const u8, len: usize) -> Result<usize, NonZeroI32> {
+    // Setup arguments.
+    let td = Thread::current();
+    let args = [fd as usize, buf as usize, len];
+
+    // Invoke handler.
+    let handler = unsafe { (*SYSENTS)[4].handler };
+    let errno = unsafe { handler(td, args.as_ptr().cast()) };
+
+    match NonZeroI32::new(errno) {
+        Some(v) => Err(v),
+        None => Ok(unsafe { (*td).ret()[0] }),
+    }
+}
+
 /// Encapsulate an opened file descriptor.
 pub struct OwnedFd(c_int);
+
+impl OwnedFd {
+    pub fn as_raw_fd(&self) -> c_int {
+        self.0
+    }
+}
 
 impl Drop for OwnedFd {
     fn drop(&mut self) {

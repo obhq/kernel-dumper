@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use crate::fs::{open, OpenFlags};
+use crate::fs::{open, write, OpenFlags};
 use crate::thread::Thread;
 use core::arch::global_asm;
 use core::ffi::{c_int, c_void};
@@ -90,7 +90,23 @@ pub extern "C" fn main(_: *const u8) {
         Err(_) => return,
     };
 
-    drop(out);
+    // Dump ELF header.
+    let mut written = 0;
+
+    while written < 0x40 {
+        let fd = out.as_raw_fd();
+        let buf = (base + written).as_ptr();
+        let len = (0x40 - written) as usize;
+
+        match write(fd, buf, len) {
+            Ok(v) => written += v as u64,
+            Err(_) => return,
+        }
+    }
+
+    // Dump ELF program headers.
+    let e_phnum = unsafe { (base + 0x38).as_ptr::<u16>().read() as usize };
+    let data = unsafe { core::slice::from_raw_parts((base + 0x40).as_ptr::<u8>(), e_phnum * 0x38) };
 }
 
 /// # Safety

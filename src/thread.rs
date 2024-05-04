@@ -4,7 +4,7 @@ use core::arch::asm;
 #[repr(C)]
 pub struct Thread {
     pad: [u8; 0x398],
-    ret: [u64; 2], // td_retval
+    ret: [usize; 2], // td_retval
 }
 
 impl Thread {
@@ -18,7 +18,7 @@ impl Thread {
         p
     }
 
-    pub fn ret(&self) -> &[u64; 2] {
+    pub fn ret(&self) -> &[usize; 2] {
         &self.ret
     }
 }
