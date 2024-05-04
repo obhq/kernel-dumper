@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bitflags = "2.5.0"
 x86_64 = { version = "0.15.1", features = ["instructions"], default-features = false }

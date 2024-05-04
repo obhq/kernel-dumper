@@ -1,11 +1,20 @@
 #![no_std]
 #![no_main]
 
+use crate::fs::{open, OpenFlags};
+use crate::thread::Thread;
 use core::arch::global_asm;
+use core::ffi::{c_int, c_void};
 use core::panic::PanicInfo;
+use core::ptr::null;
 use x86_64::registers::control::Cr0;
 use x86_64::registers::model_specific::LStar;
 use x86_64::VirtAddr;
+
+mod errno;
+mod fs;
+mod pcpu;
+mod thread;
 
 // The job of this custom entry point is:
 //
@@ -68,6 +77,21 @@ pub extern "C" fn main(_: *const u8) {
     unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
     unsafe { patch_kernel(base) };
     unsafe { Cr0::write_raw(cr0) };
+
+    // Get kernel addresses.
+    unsafe { SYSENTS = (base + 0x1101760).as_ptr() };
+
+    // Create dump file.
+    let out = match open(
+        c"/mnt/usb0/kernel.elf",
+        OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC,
+        0o777,
+    ) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    drop(out);
 }
 
 /// # Safety
@@ -95,3 +119,14 @@ unsafe fn patch_kernel(base: VirtAddr) {
 fn panic(_: &PanicInfo) -> ! {
     loop {}
 }
+
+/// Implementation of `sysent` structure.
+#[repr(C)]
+struct Sysent {
+    narg: c_int,
+    handler: unsafe extern "C" fn(td: *mut Thread, uap: *const c_void) -> c_int,
+    pad: [u8; 0x20],
+}
+
+/// Syscall table.
+static mut SYSENTS: *const [Sysent; 678] = null();
