@@ -4,6 +4,8 @@
 use core::arch::global_asm;
 use core::panic::PanicInfo;
 use x86_64::registers::control::Cr0;
+use x86_64::registers::model_specific::LStar;
+use x86_64::VirtAddr;
 
 // The job of this custom entry point is:
 //
@@ -56,11 +58,37 @@ global_asm!(
 
 #[no_mangle]
 pub extern "C" fn main(_: *const u8) {
+    // Get base address of the kernel.
+    let aslr = LStar::read() - 0xffffffff822001c0;
+    let base = aslr + 0xffffffff82200000;
+
     // Remove address checking from copyin, copyout and copyinstr.
     let cr0 = Cr0::read_raw();
 
     unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
+    unsafe { patch_kernel(base) };
     unsafe { Cr0::write_raw(cr0) };
+}
+
+/// # Safety
+/// - `base` must be a valid base address of the kernel.
+/// - `WP` flag must not be set on `CR0`.
+unsafe fn patch_kernel(base: VirtAddr) {
+    let base = base.as_mut_ptr::<u8>();
+    let patches = [
+        (0x2DDF42usize, [0x90u8; 2].as_slice()), // copyout_patch1
+        (0x2DDF4E, &[0x90; 3]),                  // copyout_patch2
+        (0x2DE037, &[0x90; 2]),                  // copyin_patch1
+        (0x2DE043, &[0x90; 3]),                  // copyin_patch2
+        (0x2DE4E3, &[0x90; 2]),                  // copyinstr_patch1
+        (0x2DE4EF, &[0x90; 3]),                  // copyinstr_patch2
+        (0x2DE520, &[0x90; 2]),                  // copyinstr_patch3
+    ];
+
+    for (off, patch) in patches {
+        base.add(off)
+            .copy_from_nonoverlapping(patch.as_ptr(), patch.len());
+    }
 }
 
 #[panic_handler]
