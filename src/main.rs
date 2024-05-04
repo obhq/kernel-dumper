@@ -4,7 +4,9 @@
 use crate::fs::{open, write, OpenFlags};
 use crate::thread::Thread;
 use core::arch::global_asm;
+use core::cmp::min;
 use core::ffi::{c_int, c_void};
+use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
 use core::ptr::null;
 use x86_64::registers::control::Cr0;
@@ -87,26 +89,85 @@ pub extern "C" fn main(_: *const u8) {
         0o777,
     ) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => {
+            notify("Failed to open /mnt/usb0/kernel.elf");
+            return;
+        }
     };
 
     // Dump ELF header.
-    let mut written = 0;
+    let data = unsafe { core::slice::from_raw_parts(base.as_ptr(), 0x40) };
 
-    while written < 0x40 {
-        let fd = out.as_raw_fd();
-        let buf = (base + written).as_ptr();
-        let len = (0x40 - written) as usize;
-
-        match write(fd, buf, len) {
-            Ok(v) => written += v as u64,
-            Err(_) => return,
-        }
+    if !write_all(out.as_raw_fd(), data) {
+        notify("Failed to write ELF header");
+        return;
     }
 
     // Dump ELF program headers.
     let e_phnum = unsafe { (base + 0x38).as_ptr::<u16>().read() as usize };
     let data = unsafe { core::slice::from_raw_parts((base + 0x40).as_ptr::<u8>(), e_phnum * 0x38) };
+
+    if !write_all(out.as_raw_fd(), data) {
+        notify("Failed to write ELF program headers");
+        return;
+    }
+
+    notify("Dump completed!");
+}
+
+fn write_all(fd: c_int, mut data: &[u8]) -> bool {
+    while !data.is_empty() {
+        let buf = data.as_ptr();
+        let len = data.len();
+        let bytes = match write(fd, buf, len) {
+            Ok(v) => v,
+            Err(_) => return false,
+        };
+
+        if bytes == 0 {
+            return false;
+        }
+
+        data = &data[bytes..];
+    }
+
+    true
+}
+
+fn notify(msg: impl AsRef<[u8]>) {
+    // Open notification device.
+    let devs = [c"/dev/notification0", c"/dev/notification1"];
+    let mut fd = None;
+
+    for dev in devs {
+        if let Ok(v) = open(dev, OpenFlags::O_WRONLY, 0) {
+            fd = Some(v);
+            break;
+        }
+    }
+
+    // Check if we have a device to write to.
+    let fd = match fd {
+        Some(v) => v,
+        None => return,
+    };
+
+    // Setup notification.
+    let mut data: OrbisNotificationRequest = unsafe { zeroed() };
+    let msg = msg.as_ref();
+    let len = min(data.message.len() - 1, msg.len());
+
+    data.target_id = -1;
+    data.use_icon_image_uri = 1;
+    data.message[..len].copy_from_slice(&msg[..len]);
+
+    // Write notification.
+    write(
+        fd.as_raw_fd(),
+        &data as *const OrbisNotificationRequest as _,
+        size_of_val(&data),
+    )
+    .ok();
 }
 
 /// # Safety
@@ -133,6 +194,26 @@ unsafe fn patch_kernel(base: VirtAddr) {
 #[panic_handler]
 fn panic(_: &PanicInfo) -> ! {
     loop {}
+}
+
+/// By OSM-Made.
+#[repr(C)]
+struct OrbisNotificationRequest {
+    ty: c_int,
+    req_id: c_int,
+    priority: c_int,
+    msg_id: c_int,
+    target_id: c_int,
+    user_id: c_int,
+    unk1: c_int,
+    unk2: c_int,
+    app_id: c_int,
+    error_num: c_int,
+    unk3: c_int,
+    use_icon_image_uri: u8,
+    message: [u8; 1024],
+    icon_uri: [u8; 1024],
+    unk: [u8; 1024],
 }
 
 /// Implementation of `sysent` structure.
