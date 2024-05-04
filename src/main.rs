@@ -131,9 +131,9 @@ pub extern "C" fn main(_: *const u8) {
     while !data.is_empty() {
         // Write file.
         let fd = out.as_raw_fd();
-        let buf = data.as_ptr();
-        let len = data.len();
-        let bytes = match write(fd, buf, len) {
+        let len = min(data.len(), 0x4000);
+        let buf = &data[..len];
+        let bytes = match write(fd, buf.as_ptr(), buf.len()) {
             Ok(v) => v,
             Err(_) => {
                 notify("Failed to write /mnt/usb0/kernel.elf");
