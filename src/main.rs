@@ -27,7 +27,7 @@ global_asm!(
     "lea rdi, [rip]",
     "sub rdi, 7", // 7 is size of "lea rdi, [rip]".
     "mov rax, rdi",
-    "add rax, 0x100", // Offset of dynamic section configured in kernel-dumper.ld.
+    "add rax, 0x80", // Offset of dynamic section configured in kernel-dumper.ld.
     "xor r8, r8",
     "0:",
     "mov rsi, [rax]",

@@ -3,16 +3,20 @@ SECTIONS {
         *(.text.entry)
     }
 
-    .dynamic 0x100 : {
+    .dynamic 0x80 : {
         *(.dynamic)
-    }
-
-    .rodata : ALIGN(8) {
-        *(.rela.dyn)
     }
 
     .text : {
         *(.text.*)
+    }
+
+    .rodata : {
+        *(.rela.dyn)
+    }
+
+    .bss : {
+        *(.bss.*)
     }
 
     /DISCARD/ : {
