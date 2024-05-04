@@ -18,25 +18,25 @@ global_asm!(
     "mov rax, rdi",
     "add rax, 0x100", // Offset of dynamic section configured in kernel-dumper.ld.
     "xor r8, r8",
-    "read_dynamic:",
+    "0:",
     "mov rsi, [rax]",
     "mov rcx, [rax+8]",
     "add rax, 16",
     "test rsi, rsi", // Check if DT_NULL.
-    "jz relocate",
+    "jz 1f",
     "cmp rsi, 7", // Check if DT_RELA.
-    "jz dt_rela",
+    "jz 2f",
     "cmp rsi, 8", // Check if DT_RELASZ.
-    "jz dt_relasz",
-    "jmp read_dynamic",
-    "dt_rela:", // Keep DT_RELA.
+    "jz 3f",
+    "jmp 0b",
+    "2:", // Keep DT_RELA.
     "mov rdx, rdi",
     "add rdx, rcx",
-    "jmp read_dynamic",
-    "dt_relasz:", // Keep DT_RELASZ.
+    "jmp 0b",
+    "3:", // Keep DT_RELASZ.
     "mov r8, rcx",
-    "jmp read_dynamic",
-    "relocate:",
+    "jmp 0b",
+    "1:",
     "test r8, r8", // Check if no more DT_RELA entries.
     "jz main",
     "mov rsi, [rdx]",
@@ -47,11 +47,11 @@ global_asm!(
     "test eax, eax", // Check if R_X86_64_NONE.
     "jz main",
     "cmp eax, 8", // Check if R_X86_64_RELATIVE.
-    "jnz relocate",
+    "jnz 1b",
     "add rsi, rdi",
     "add rcx, rdi",
     "mov [rsi], rcx",
-    "jmp relocate",
+    "jmp 1b",
 );
 
 #[no_mangle]
