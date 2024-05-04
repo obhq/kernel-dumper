@@ -1,4 +1,5 @@
 # Kernel Dumper
+[![CI](https://github.com/obhq/kernel-dumper/actions/workflows/ci.yml/badge.svg)](https://github.com/obhq/kernel-dumper/actions/workflows/ci.yml)
 
 Kernel Dumper is a payload for PS4 kernel to dump the kernel. Only 11.00 is supported.
 
