@@ -34,6 +34,21 @@ pub fn write(fd: c_int, buf: *const u8, len: usize) -> Result<usize, NonZeroI32>
     }
 }
 
+pub fn fsync(fd: c_int) -> Result<(), NonZeroI32> {
+    // Setup arguments.
+    let td = Thread::current();
+    let args = [fd as usize];
+
+    // Invoke handler.
+    let handler = unsafe { (*SYSENTS)[95].handler };
+    let errno = unsafe { handler(td, args.as_ptr().cast()) };
+
+    match NonZeroI32::new(errno) {
+        Some(v) => Err(v),
+        None => Ok(()),
+    }
+}
+
 /// Encapsulate an opened file descriptor.
 pub struct OwnedFd(c_int);
 

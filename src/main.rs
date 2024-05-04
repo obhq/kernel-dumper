@@ -2,7 +2,7 @@
 #![no_main]
 
 use crate::elf::ProgramType;
-use crate::fs::{open, write, OpenFlags};
+use crate::fs::{fsync, open, write, OpenFlags};
 use crate::thread::Thread;
 use core::arch::global_asm;
 use core::cmp::min;
@@ -143,6 +143,12 @@ pub extern "C" fn main(_: *const u8) {
 
         if bytes == 0 {
             notify("Not enough space to dump the kernel");
+            return;
+        }
+
+        // Sync.
+        if fsync(fd).is_err() {
+            notify("Failed to synchronize changes to a /mnt/usb0/kernel.elf");
             return;
         }
 
