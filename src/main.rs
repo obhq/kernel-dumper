@@ -76,7 +76,7 @@ pub extern "C" fn main(_: *const u8) {
 
     // Setup dumping method.
     #[cfg(method = "syscall")]
-    let method = unsafe { crate::syscall::SyscallMethod::new(base.as_ptr()) };
+    let method = unsafe { crate::syscall::SyscallMethod::new(&kernel) };
 
     // Create dump file.
     let out = match method.open(

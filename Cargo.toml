@@ -15,4 +15,4 @@ ps4k-1100 = { path = "ps4k-1100" }
 opt-level = "z"
 
 [workspace]
-members = ["ps4k", "ps4k-1100"]
+members = ["ps4k", "ps4k-1100", "ps4k-macros"]

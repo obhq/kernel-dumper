@@ -2,6 +2,8 @@
 
 use self::version::KernelVersion;
 
+pub use ps4k_macros::*;
+
 pub mod elf;
 pub mod version;
 

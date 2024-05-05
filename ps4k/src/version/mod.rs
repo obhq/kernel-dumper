@@ -1,7 +1,13 @@
+pub use self::thread::*;
 use crate::elf::ProgramType;
+use core::ffi::{c_char, c_int};
+
+mod thread;
 
 /// Provides information about the PS4 kernel for a specific version.
-pub trait KernelVersion: Send + Sync {
+pub trait KernelVersion: Send + Sync + 'static {
+    type Thread: Thread;
+
     /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the
     /// kernel is unknown.
@@ -16,6 +22,19 @@ pub trait KernelVersion: Send + Sync {
     /// The returned slice can contains `PF_W` programs. That mean the memory covered by this slice
     /// can mutate at any time. The whole slice is guarantee to be readable.
     unsafe fn elf(&self) -> &'static [u8];
+
+    /// # Safety
+    /// - `td` cannot be null.
+    /// - `path` cannot be null and must point to a null-terminated string if `kernel` is `true`.
+    unsafe fn kern_openat(
+        &self,
+        td: *mut Self::Thread,
+        fd: c_int,
+        path: *const c_char,
+        kernel: bool,
+        flags: c_int,
+        mode: c_int,
+    ) -> c_int;
 
     /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the

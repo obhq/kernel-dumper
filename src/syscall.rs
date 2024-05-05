@@ -1,8 +1,9 @@
 use crate::method::{DumpMethod, OpenFlags, OwnedFd};
-use core::arch::asm;
 use core::ffi::{c_int, c_void, CStr};
 use core::mem::transmute;
 use core::num::NonZeroI32;
+use ps4k::version::{KernelVersion, Thread};
+use ps4k::Kernel;
 use x86_64::registers::control::Cr0;
 
 /// Implementation of [`DumpMethod`] using syscalls.
@@ -12,13 +13,14 @@ use x86_64::registers::control::Cr0;
 ///
 /// The reason this method exists because in order for the direct method to work we need to get the
 /// first dump to find the required function addresses.
-pub struct SyscallMethod {
-    sysents: &'static [Sysent; 678],
+pub struct SyscallMethod<V: KernelVersion> {
+    sysents: &'static [Sysent<V>; 678],
 }
 
-impl SyscallMethod {
-    pub unsafe fn new(base: *const u8) -> Self {
+impl<V: KernelVersion> SyscallMethod<V> {
+    pub unsafe fn new(kernel: &Kernel<V>) -> Self {
         // Remove address checking from copyin, copyout and copyinstr.
+        let base = kernel.version().elf().as_ptr();
         let cr0 = Cr0::read_raw();
 
         unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
@@ -53,7 +55,7 @@ impl SyscallMethod {
     }
 }
 
-impl DumpMethod for SyscallMethod {
+impl<V: KernelVersion> DumpMethod for SyscallMethod<V> {
     fn open(
         &self,
         path: &CStr,
@@ -71,7 +73,7 @@ impl DumpMethod for SyscallMethod {
         match NonZeroI32::new(errno) {
             Some(v) => Err(v),
             None => Ok(OwnedFd::new(self, unsafe {
-                (*td).ret[0].try_into().unwrap()
+                (*td).ret(0).try_into().unwrap()
             })),
         }
     }
@@ -87,7 +89,7 @@ impl DumpMethod for SyscallMethod {
 
         match NonZeroI32::new(errno) {
             Some(v) => Err(v),
-            None => Ok(unsafe { (*td).ret[0] }),
+            None => Ok(unsafe { (*td).ret(0) }),
         }
     }
 
@@ -124,27 +126,8 @@ impl DumpMethod for SyscallMethod {
 
 /// Implementation of `sysent` structure.
 #[repr(C)]
-struct Sysent {
+struct Sysent<V: KernelVersion> {
     narg: c_int,
-    handler: unsafe extern "C" fn(td: *mut Thread, uap: *const c_void) -> c_int,
+    handler: unsafe extern "C" fn(td: *mut V::Thread, uap: *const c_void) -> c_int,
     pad: [u8; 0x20],
-}
-
-/// Implementation of `thread` structure.
-#[repr(C)]
-struct Thread {
-    pad: [u8; 0x398],
-    ret: [usize; 2], // td_retval
-}
-
-impl Thread {
-    fn current() -> *mut Self {
-        let mut p;
-
-        unsafe {
-            asm!("mov {}, gs:[0]", out(reg) p, options(readonly, pure, preserves_flags, nostack))
-        };
-
-        p
-    }
 }
