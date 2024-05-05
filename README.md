@@ -17,6 +17,39 @@ sudo python3 pppwn.py --interface=enp0s3 --fw=1100 --stage2=kernel-dumper.bin
 
 Wait for a notification `Dump completed!`. This may take a couple of minutes depend on how fast is your USB drive. Then shutdown the PS4 (not putting it into rest mode). Once the PS4 completely shutdown unplug the USB drive to grab `kernel.elf`.
 
+To load this dump in Ghidra you need to load as a `Raw Binary` with a correct `Base Address` and `x86:default:64:little:gcc` as a `Language`. Use `readelf` to find a value for `Base Address`:
+
+```sh
+readelf -l kernel.elf
+```
+
+It will output something like:
+
+```
+Elf file type is EXEC (Executable file)
+Entry point 0xffffffff9b68c8b0
+There are 6 program headers, starting at offset 64
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  PHDR           0x0000000000000040 0xffffffff9b480040 0xffffffff9b480040
+                 0x0000000000000150 0x0000000000000150  R      0x8
+  INTERP         0x0000000000000190 0xffffffff9b480190 0xffffffff9b480190
+                 0x0000000000000007 0x0000000000000007  R      0x1
+      [Requesting program interpreter: /DUMMY]
+  LOAD           0x0000000000000000 0xffffffff9b480000 0xffffffff9b480000
+                 0x0000000000cfe6d8 0x0000000000cfe6d8  R E    0x200000
+  LOOS+0x1000010 0x0000000000cff000 0xffffffff9c57f000 0xffffffff9c57f000
+                 0x0000000000020c70 0x0000000000200000  R      0x200000
+  LOAD           0x0000000000d20000 0xffffffff9c9a0000 0xffffffff9c9a0000
+                 0x0000000000605280 0x00000000012fda10  RW     0x200000
+  DYNAMIC        0x0000000000cfe5c8 0xffffffff9c17e5c8 0xffffffff9c17e5c8
+                 0x0000000000000110 0x0000000000000110  RW     0x8
+```
+
+The value for `Base Address` is `VirtAddr` of the first `LOAD` program (e.g. `0xffffffff9b480000` for the above dump). Each dump will have a different address due to ASLR so you can't use the above information with your dump.
+
 ## Building from source
 
 ### Prerequisites
