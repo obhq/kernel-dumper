@@ -6,10 +6,11 @@ edition = "2021"
 [dependencies]
 bitflags = "2.5.0"
 ps4k = { path = "ps4k" }
+ps4k-1100 = { path = "ps4k-1100" }
 x86_64 = { version = "0.15.1", features = ["instructions"], default-features = false }
 
 [profile.release]
 opt-level = "z"
 
 [workspace]
-members = ["ps4k"]
+members = ["ps4k", "ps4k-1100"]

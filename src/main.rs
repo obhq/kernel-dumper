@@ -9,6 +9,7 @@ use core::ffi::{c_int, c_void};
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
 use core::ptr::null;
+use ps4k::version::KernelVersion;
 use ps4k::Kernel;
 use x86_64::registers::control::Cr0;
 use x86_64::registers::model_specific::LStar;
@@ -81,7 +82,7 @@ pub extern "C" fn main(_: *const u8) {
     unsafe { Cr0::write_raw(cr0) };
 
     // Initialize ps4k crate.
-    let kernel = unsafe { Kernel::new(base.as_ptr()) };
+    let kernel = unsafe { Kernel::<ps4k_1100::KernelVersion>::new(base.as_ptr()) };
     unsafe { SYSENTS = (base + 0x1101760).as_ptr() };
 
     // Create dump file.
@@ -98,7 +99,7 @@ pub extern "C" fn main(_: *const u8) {
     };
 
     // Dump.
-    let mut data = unsafe { kernel.elf() };
+    let mut data = unsafe { kernel.version().elf() };
 
     while !data.is_empty() {
         // Write file.
