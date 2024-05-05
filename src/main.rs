@@ -1,32 +1,23 @@
 #![no_std]
 #![no_main]
 
-use crate::fs::{fsync, open, write, OpenFlags};
-use crate::thread::Thread;
+use crate::method::{DumpMethod, OpenFlags};
 use core::arch::global_asm;
 use core::cmp::min;
-use core::ffi::{c_int, c_void};
+use core::ffi::c_int;
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
-use core::ptr::null;
 use ps4k::version::KernelVersion;
 use ps4k::Kernel;
-use x86_64::registers::control::Cr0;
 use x86_64::registers::model_specific::LStar;
-use x86_64::VirtAddr;
 
 mod errno;
-mod fs;
-mod thread;
-#[cfg(fw = "custom")]
-#[rustfmt::skip]
-mod version;
+mod method;
+#[cfg(method = "syscall")]
+mod syscall;
 
 #[cfg(fw = "1100")]
 type Version = ps4k_1100::KernelVersion;
-
-#[cfg(fw = "custom")]
-type Version = self::version::KernelVersion;
 
 // The job of this custom entry point is:
 //
@@ -80,29 +71,23 @@ global_asm!(
 #[no_mangle]
 pub extern "C" fn main(_: *const u8) {
     // Get base address of the kernel.
-    let aslr = LStar::read() - 0xffffffff822001c0;
+    let aslr = LStar::read() - 0xffffffff822001c0; // AFAIK syscall handler is same for all version.
     let base = aslr + 0xffffffff82200000;
-
-    // Remove address checking from copyin, copyout and copyinstr.
-    let cr0 = Cr0::read_raw();
-
-    unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
-    unsafe { patch_kernel(base) };
-    unsafe { Cr0::write_raw(cr0) };
-
-    // Initialize ps4k crate.
     let kernel = unsafe { Kernel::<Version>::new(base.as_ptr()) };
-    unsafe { SYSENTS = (base + 0x1101760).as_ptr() };
+
+    // Setup dumping method.
+    #[cfg(method = "syscall")]
+    let method = unsafe { crate::syscall::SyscallMethod::new(base.as_ptr()) };
 
     // Create dump file.
-    let out = match open(
+    let out = match method.open(
         c"/mnt/usb0/kernel.elf",
         OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC,
         0o777,
     ) {
         Ok(v) => v,
         Err(_) => {
-            notify("Failed to open /mnt/usb0/kernel.elf");
+            notify(&method, "Failed to open /mnt/usb0/kernel.elf");
             return;
         }
     };
@@ -115,38 +100,42 @@ pub extern "C" fn main(_: *const u8) {
         let fd = out.as_raw_fd();
         let len = min(data.len(), 0x4000);
         let buf = &data[..len];
-        let written = match write(fd, buf.as_ptr(), buf.len()) {
+        let written = match method.write(fd, buf.as_ptr(), buf.len()) {
             Ok(v) => v,
             Err(_) => {
-                notify("Failed to write /mnt/usb0/kernel.elf");
+                notify(&method, "Failed to write /mnt/usb0/kernel.elf");
                 return;
             }
         };
 
         if written == 0 {
-            notify("Not enough space to dump the kernel");
+            notify(&method, "Not enough space to dump the kernel");
             return;
         }
 
         // Sync.
-        if fsync(fd).is_err() {
-            notify("Failed to synchronize changes to a /mnt/usb0/kernel.elf");
+        if method.fsync(fd).is_err() {
+            notify(
+                &method,
+                "Failed to synchronize changes to a /mnt/usb0/kernel.elf",
+            );
+
             return;
         }
 
         data = &data[written..];
     }
 
-    notify("Dump completed!");
+    notify(&method, "Dump completed!");
 }
 
-fn notify(msg: impl AsRef<[u8]>) {
+fn notify(method: &impl DumpMethod, msg: impl AsRef<[u8]>) {
     // Open notification device.
     let devs = [c"/dev/notification0", c"/dev/notification1"];
     let mut fd = None;
 
     for dev in devs {
-        if let Ok(v) = open(dev, OpenFlags::O_WRONLY, 0) {
+        if let Ok(v) = method.open(dev, OpenFlags::O_WRONLY, 0) {
             fd = Some(v);
             break;
         }
@@ -168,33 +157,13 @@ fn notify(msg: impl AsRef<[u8]>) {
     data.message[..len].copy_from_slice(&msg[..len]);
 
     // Write notification.
-    write(
-        fd.as_raw_fd(),
-        &data as *const OrbisNotificationRequest as _,
-        size_of_val(&data),
-    )
-    .ok();
-}
-
-/// # Safety
-/// - `base` must be a valid base address of the kernel.
-/// - `WP` flag must not be set on `CR0`.
-unsafe fn patch_kernel(base: VirtAddr) {
-    let base = base.as_mut_ptr::<u8>();
-    let patches = [
-        (0x2DDF42usize, [0x90u8; 2].as_slice()), // copyout_patch1
-        (0x2DDF4E, &[0x90; 3]),                  // copyout_patch2
-        (0x2DE037, &[0x90; 2]),                  // copyin_patch1
-        (0x2DE043, &[0x90; 3]),                  // copyin_patch2
-        (0x2DE4E3, &[0x90; 2]),                  // copyinstr_patch1
-        (0x2DE4EF, &[0x90; 3]),                  // copyinstr_patch2
-        (0x2DE520, &[0x90; 2]),                  // copyinstr_patch3
-    ];
-
-    for (off, patch) in patches {
-        base.add(off)
-            .copy_from_nonoverlapping(patch.as_ptr(), patch.len());
-    }
+    method
+        .write(
+            fd.as_raw_fd(),
+            &data as *const OrbisNotificationRequest as _,
+            size_of_val(&data),
+        )
+        .ok();
 }
 
 #[panic_handler]
@@ -221,14 +190,3 @@ struct OrbisNotificationRequest {
     icon_uri: [u8; 1024],
     unk: [u8; 1024],
 }
-
-/// Implementation of `sysent` structure.
-#[repr(C)]
-struct Sysent {
-    narg: c_int,
-    handler: unsafe extern "C" fn(td: *mut Thread, uap: *const c_void) -> c_int,
-    pad: [u8; 0x20],
-}
-
-/// Syscall table.
-static mut SYSENTS: *const [Sysent; 678] = null();

@@ -1,6 +1,6 @@
 [build]
 target = "x86_64-unknown-none"
-rustflags = ["--cfg", "fw=\"1100\""]
+rustflags = ["--cfg", "fw=\"1100\"", "--cfg", "method=\"syscall\""]
 
 [unstable]
 build-std = ["std", "panic_abort"]
