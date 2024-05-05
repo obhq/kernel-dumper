@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-use crate::elf::ProgramType;
 use crate::fs::{fsync, open, write, OpenFlags};
 use crate::thread::Thread;
 use core::arch::global_asm;
@@ -10,11 +9,11 @@ use core::ffi::{c_int, c_void};
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
 use core::ptr::null;
+use ps4k::Kernel;
 use x86_64::registers::control::Cr0;
 use x86_64::registers::model_specific::LStar;
 use x86_64::VirtAddr;
 
-mod elf;
 mod errno;
 mod fs;
 mod thread;
@@ -81,7 +80,8 @@ pub extern "C" fn main(_: *const u8) {
     unsafe { patch_kernel(base) };
     unsafe { Cr0::write_raw(cr0) };
 
-    // Get kernel addresses.
+    // Initialize ps4k crate.
+    let kernel = unsafe { Kernel::new(base.as_ptr()) };
     unsafe { SYSENTS = (base + 0x1101760).as_ptr() };
 
     // Create dump file.
@@ -97,44 +97,15 @@ pub extern "C" fn main(_: *const u8) {
         }
     };
 
-    // Get kernel size.
-    let e_phnum = unsafe { (base + 0x38).as_ptr::<u16>().read() as usize };
-    let data = unsafe { core::slice::from_raw_parts((base + 0x40).as_ptr::<u8>(), e_phnum * 0x38) };
-    let mut end = base.as_u64() as usize;
-
-    for h in data.chunks_exact(0x38) {
-        // Skip non-loadable.
-        let ty = ProgramType::new(u32::from_le_bytes(h[0x00..0x04].try_into().unwrap()));
-
-        if !matches!(ty, ProgramType::PT_LOAD | ProgramType::PT_SCE_RELRO) {
-            continue;
-        }
-
-        // Check if program follow the previous one.
-        let addr = usize::from_le_bytes(h[0x10..0x18].try_into().unwrap());
-
-        if addr < end {
-            notify("Some ELF programs overlapped!");
-            return;
-        }
-
-        // Update end address.
-        let len = usize::from_le_bytes(h[0x28..0x30].try_into().unwrap());
-        let align = usize::from_le_bytes(h[0x30..0x38].try_into().unwrap());
-
-        end = addr + len.next_multiple_of(align);
-    }
-
     // Dump.
-    let len = end - (base.as_u64() as usize);
-    let mut data = unsafe { core::slice::from_raw_parts(base.as_ptr::<u8>(), len) };
+    let mut data = unsafe { kernel.elf() };
 
     while !data.is_empty() {
         // Write file.
         let fd = out.as_raw_fd();
         let len = min(data.len(), 0x4000);
         let buf = &data[..len];
-        let bytes = match write(fd, buf.as_ptr(), buf.len()) {
+        let written = match write(fd, buf.as_ptr(), buf.len()) {
             Ok(v) => v,
             Err(_) => {
                 notify("Failed to write /mnt/usb0/kernel.elf");
@@ -142,7 +113,7 @@ pub extern "C" fn main(_: *const u8) {
             }
         };
 
-        if bytes == 0 {
+        if written == 0 {
             notify("Not enough space to dump the kernel");
             return;
         }
@@ -153,7 +124,7 @@ pub extern "C" fn main(_: *const u8) {
             return;
         }
 
-        data = &data[bytes..];
+        data = &data[written..];
     }
 
     notify("Dump completed!");
