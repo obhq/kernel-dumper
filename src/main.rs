@@ -11,7 +11,6 @@ use ps4k::version::KernelVersion;
 use ps4k::Kernel;
 use x86_64::registers::model_specific::LStar;
 
-mod errno;
 mod method;
 #[cfg(method = "syscall")]
 mod syscall;
