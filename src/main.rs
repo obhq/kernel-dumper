@@ -18,6 +18,14 @@ use x86_64::VirtAddr;
 mod errno;
 mod fs;
 mod thread;
+#[cfg(fw = "custom")]
+mod version;
+
+#[cfg(fw = "1100")]
+type Version = ps4k_1100::KernelVersion;
+
+#[cfg(fw = "custom")]
+type Version = self::version::KernelVersion;
 
 // The job of this custom entry point is:
 //
@@ -82,7 +90,7 @@ pub extern "C" fn main(_: *const u8) {
     unsafe { Cr0::write_raw(cr0) };
 
     // Initialize ps4k crate.
-    let kernel = unsafe { Kernel::<ps4k_1100::KernelVersion>::new(base.as_ptr()) };
+    let kernel = unsafe { Kernel::<Version>::new(base.as_ptr()) };
     unsafe { SYSENTS = (base + 0x1101760).as_ptr() };
 
     // Create dump file.
