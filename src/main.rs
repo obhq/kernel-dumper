@@ -19,6 +19,7 @@ mod errno;
 mod fs;
 mod thread;
 #[cfg(fw = "custom")]
+#[rustfmt::skip]
 mod version;
 
 #[cfg(fw = "1100")]
