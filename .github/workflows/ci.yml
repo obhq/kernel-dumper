@@ -17,10 +17,8 @@ jobs:
       run: cargo fmt --check
     - name: Install Rust components
       run: rustup component add rust-src llvm-tools
-    - name: Install Cargo commands
-      run: cargo install --git https://github.com/rust-embedded/cargo-binutils.git
     - name: Build
-      run: cargo objcopy -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --release release -- -O binary kernel-dumper.bin
+      run: ./build.py
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:

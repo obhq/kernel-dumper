@@ -59,25 +59,13 @@ The value for `Base Address` is `VirtAddr` of the first `LOAD` program (e.g. `0x
 ### Install additional Rust component
 
 ```sh
-rustup component add rust-src
-```
-
-### Install additional Cargo commands
-
-```sh
-cargo install --git https://github.com/rust-embedded/cargo-binutils.git
-```
-
-`cargo-binutils` required additional dependency which can be installed with the following command:
-
-```sh
-rustup component add llvm-tools
+rustup component add rust-src llvm-tools
 ```
 
 ### Build
 
 ```sh
-cargo objcopy -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --release release -- -O binary kernel-dumper.bin
+./build.py
 ```
 
 ## License
