@@ -53,6 +53,12 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
     }
 
     fn close(&self, fd: c_int) -> Result<(), NonZeroI32> {
-        Ok(())
+        let td = Thread::current();
+        let errno = unsafe { self.kernel.kern_close(td, fd) };
+
+        match NonZeroI32::new(errno) {
+            Some(v) => Err(v),
+            None => Ok(()),
+        }
     }
 }
