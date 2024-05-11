@@ -10,6 +10,8 @@ use core::panic::PanicInfo;
 use korbis::Kernel;
 use x86_64::registers::model_specific::LStar;
 
+#[cfg(method = "direct")]
+mod direct;
 mod method;
 #[cfg(method = "syscall")]
 mod syscall;
@@ -73,6 +75,8 @@ pub extern "C" fn main(_: *const u8) {
     // Setup dumping method.
     #[cfg(method = "syscall")]
     let method = unsafe { crate::syscall::SyscallMethod::new(&kernel) };
+    #[cfg(method = "direct")]
+    let method = crate::direct::DirectMethod::new(kernel);
 
     // Create dump file.
     let out = match method.open(
@@ -108,17 +112,17 @@ pub extern "C" fn main(_: *const u8) {
             return;
         }
 
-        // Sync.
-        if method.fsync(fd).is_err() {
-            notify(
-                &method,
-                "Failed to synchronize changes to a /mnt/usb0/kernel.elf",
-            );
-
-            return;
-        }
-
         data = &data[written..];
+    }
+
+    // Sync.
+    if method.fsync(out.as_raw_fd()).is_err() {
+        notify(
+            &method,
+            "Failed to synchronize changes to a /mnt/usb0/kernel.elf",
+        );
+
+        return;
     }
 
     notify(&method, "Dump completed!");
