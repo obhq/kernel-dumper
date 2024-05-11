@@ -34,4 +34,7 @@ impl ps4k::version::KernelVersion for KernelVersion {
         flags: c_int,
         mode: c_int,
     ) -> c_int;
+
+    #[offset(0x416920)]
+    unsafe fn kern_close(&self, td: *mut Self::Thread, fd: c_int) -> c_int;
 }

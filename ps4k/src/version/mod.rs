@@ -37,6 +37,10 @@ pub trait KernelVersion: Send + Sync + 'static {
     ) -> c_int;
 
     /// # Safety
+    /// `td` cannot be null.
+    unsafe fn kern_close(&self, td: *mut Self::Thread, fd: c_int) -> c_int;
+
+    /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the
     /// kernel is unknown.
     ///
