@@ -7,16 +7,12 @@ use core::cmp::min;
 use core::ffi::c_int;
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
-use ps4k::version::KernelVersion;
 use ps4k::Kernel;
 use x86_64::registers::model_specific::LStar;
 
 mod method;
 #[cfg(method = "syscall")]
 mod syscall;
-
-#[cfg(fw = "1100")]
-type Version = ps4k_1100::KernelVersion;
 
 // The job of this custom entry point is:
 //
@@ -72,7 +68,7 @@ pub extern "C" fn main(_: *const u8) {
     // Get base address of the kernel.
     let aslr = LStar::read() - 0xffffffff822001c0; // AFAIK syscall handler is same for all version.
     let base = aslr + 0xffffffff82200000;
-    let kernel = unsafe { Kernel::<Version>::new(base.as_ptr()) };
+    let kernel = unsafe { init(base.as_ptr()) };
 
     // Setup dumping method.
     #[cfg(method = "syscall")]
@@ -92,7 +88,7 @@ pub extern "C" fn main(_: *const u8) {
     };
 
     // Dump.
-    let mut data = unsafe { kernel.version().elf() };
+    let mut data = unsafe { kernel.elf() };
 
     while !data.is_empty() {
         // Write file.
@@ -163,6 +159,11 @@ fn notify(method: &impl DumpMethod, msg: impl AsRef<[u8]>) {
             size_of_val(&data),
         )
         .ok();
+}
+
+#[cfg(fw = "1100")]
+unsafe fn init(base: *const u8) -> impl Kernel {
+    ps4k_1100::Kernel::new(base)
 }
 
 #[panic_handler]

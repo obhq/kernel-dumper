@@ -6,12 +6,12 @@ use ps4k::offset;
 
 mod thread;
 
-/// Implementation of [`ps4k::version::KernelVersion`] for 11.00.
-pub struct KernelVersion {
+/// Implementation of [`ps4k::Kernel`] for 11.00.
+pub struct Kernel {
     elf: &'static [u8],
 }
 
-impl ps4k::version::KernelVersion for KernelVersion {
+impl ps4k::Kernel for Kernel {
     type Thread = Thread;
 
     unsafe fn new(base: *const u8) -> Self {

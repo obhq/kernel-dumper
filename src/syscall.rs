@@ -2,7 +2,7 @@ use crate::method::{DumpMethod, OpenFlags, OwnedFd};
 use core::ffi::{c_int, c_void, CStr};
 use core::mem::transmute;
 use core::num::NonZeroI32;
-use ps4k::version::{KernelVersion, Thread};
+use ps4k::thread::Thread;
 use ps4k::Kernel;
 use x86_64::registers::control::Cr0;
 
@@ -13,14 +13,14 @@ use x86_64::registers::control::Cr0;
 ///
 /// The reason this method exists because in order for the direct method to work we need to get the
 /// first dump to find the required function addresses.
-pub struct SyscallMethod<V: KernelVersion> {
-    sysents: &'static [Sysent<V>; 678],
+pub struct SyscallMethod<K: Kernel> {
+    sysents: &'static [Sysent<K>; 678],
 }
 
-impl<V: KernelVersion> SyscallMethod<V> {
-    pub unsafe fn new(kernel: &Kernel<V>) -> Self {
+impl<K: Kernel> SyscallMethod<K> {
+    pub unsafe fn new(kernel: &K) -> Self {
         // Remove address checking from copyin, copyout and copyinstr.
-        let base = kernel.version().elf().as_ptr();
+        let base = kernel.elf().as_ptr();
         let cr0 = Cr0::read_raw();
 
         unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
@@ -55,7 +55,7 @@ impl<V: KernelVersion> SyscallMethod<V> {
     }
 }
 
-impl<V: KernelVersion> DumpMethod for SyscallMethod<V> {
+impl<K: Kernel> DumpMethod for SyscallMethod<K> {
     fn open(
         &self,
         path: &CStr,
@@ -126,8 +126,8 @@ impl<V: KernelVersion> DumpMethod for SyscallMethod<V> {
 
 /// Implementation of `sysent` structure.
 #[repr(C)]
-struct Sysent<V: KernelVersion> {
+struct Sysent<K: Kernel> {
     narg: c_int,
-    handler: unsafe extern "C" fn(td: *mut V::Thread, uap: *const c_void) -> c_int,
+    handler: unsafe extern "C" fn(td: *mut K::Thread, uap: *const c_void) -> c_int,
     pad: [u8; 0x20],
 }
