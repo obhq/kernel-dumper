@@ -2,12 +2,14 @@
 
 use self::elf::ProgramType;
 use self::thread::Thread;
+use self::uio::UioSeg;
 use core::ffi::{c_char, c_int};
 
 pub use korbis_macros::*;
 
 pub mod elf;
 pub mod thread;
+pub mod uio;
 
 /// Provides information about the PS4 kernel for a specific version.
 pub trait Kernel: Send + Sync + 'static {
@@ -30,13 +32,13 @@ pub trait Kernel: Send + Sync + 'static {
 
     /// # Safety
     /// - `td` cannot be null.
-    /// - `path` cannot be null and must point to a null-terminated string if `kernel` is `true`.
+    /// - `path` cannot be null and must point to a null-terminated string if `seg` is [`UioSeg::Kernel`].
     unsafe fn kern_openat(
         &self,
         td: *mut Self::Thread,
         fd: c_int,
         path: *const c_char,
-        kernel: bool,
+        seg: UioSeg,
         flags: c_int,
         mode: c_int,
     ) -> c_int;

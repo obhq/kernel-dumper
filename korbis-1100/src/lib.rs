@@ -3,6 +3,7 @@
 use self::thread::Thread;
 use core::ffi::{c_char, c_int};
 use korbis::offset;
+use korbis::uio::UioSeg;
 
 mod thread;
 
@@ -30,7 +31,7 @@ impl korbis::Kernel for Kernel {
         td: *mut Self::Thread,
         fd: c_int,
         path: *const c_char,
-        kernel: bool,
+        seg: UioSeg,
         flags: c_int,
         mode: c_int,
     ) -> c_int;

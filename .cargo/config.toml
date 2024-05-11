@@ -3,5 +3,5 @@ target = "x86_64-unknown-none"
 rustflags = ["--cfg", "fw=\"1100\"", "--cfg", "method=\"syscall\""]
 
 [unstable]
-build-std = ["std", "panic_abort"]
+build-std = ["alloc", "core", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
