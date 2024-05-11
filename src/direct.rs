@@ -5,6 +5,7 @@ use core::num::NonZeroI32;
 use korbis::thread::Thread;
 use korbis::uio::UioSeg;
 use korbis::Kernel;
+use x86_64::registers::control::Cr0;
 
 /// Implementation of [`DumpMethod`] using internal kernel functions.
 ///
@@ -13,8 +14,18 @@ pub struct DirectMethod<K> {
     kernel: K,
 }
 
-impl<K> DirectMethod<K> {
+impl<K: Kernel> DirectMethod<K> {
+    #[cfg(fw = "1100")]
     pub fn new(kernel: K) -> Self {
+        // Restore kmem_alloc patch done by PPPwn.
+        let base = unsafe { kernel.elf().as_ptr().cast_mut() };
+        let cr0 = Cr0::read_raw();
+
+        unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
+        unsafe { base.add(0x245EDC).write(3) };
+        unsafe { base.add(0x245EE4).write(3) };
+        unsafe { Cr0::write_raw(cr0) };
+
         Self { kernel }
     }
 }
