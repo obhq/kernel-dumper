@@ -8,26 +8,23 @@ use korbis::uio::UioSeg;
 mod thread;
 
 /// Implementation of [`ps4k::Kernel`] for 11.00.
-pub struct Kernel {
-    elf: &'static [u8],
-}
+#[derive(Clone, Copy)]
+pub struct Kernel(&'static [u8]);
 
 impl korbis::Kernel for Kernel {
     type Thread = Thread;
 
     unsafe fn new(base: *const u8) -> Self {
-        let elf = Self::get_mapped_elf(base);
-
-        Self { elf }
+        Self(Self::get_mapped_elf(base))
     }
 
-    unsafe fn elf(&self) -> &'static [u8] {
-        self.elf
+    unsafe fn elf(self) -> &'static [u8] {
+        self.0
     }
 
     #[offset(0xE63B0)]
     unsafe fn kern_openat(
-        &self,
+        self,
         td: *mut Self::Thread,
         fd: c_int,
         path: *const c_char,
@@ -37,5 +34,5 @@ impl korbis::Kernel for Kernel {
     ) -> c_int;
 
     #[offset(0x416920)]
-    unsafe fn kern_close(&self, td: *mut Self::Thread, fd: c_int) -> c_int;
+    unsafe fn kern_close(self, td: *mut Self::Thread, fd: c_int) -> c_int;
 }
