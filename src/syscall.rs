@@ -2,8 +2,8 @@ use crate::method::{DumpMethod, OpenFlags, OwnedFd};
 use core::ffi::{c_int, c_void, CStr};
 use core::mem::transmute;
 use core::num::NonZeroI32;
-use ps4k::thread::Thread;
-use ps4k::Kernel;
+use korbis::thread::Thread;
+use korbis::Kernel;
 use x86_64::registers::control::Cr0;
 
 /// Implementation of [`DumpMethod`] using syscalls.

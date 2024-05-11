@@ -7,7 +7,7 @@ use core::cmp::min;
 use core::ffi::c_int;
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
-use ps4k::Kernel;
+use korbis::Kernel;
 use x86_64::registers::model_specific::LStar;
 
 mod method;
@@ -163,7 +163,7 @@ fn notify(method: &impl DumpMethod, msg: impl AsRef<[u8]>) {
 
 #[cfg(fw = "1100")]
 unsafe fn init(base: *const u8) -> impl Kernel {
-    ps4k_1100::Kernel::new(base)
+    korbis_1100::Kernel::new(base)
 }
 
 #[panic_handler]

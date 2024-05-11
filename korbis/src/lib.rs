@@ -4,7 +4,7 @@ use self::elf::ProgramType;
 use self::thread::Thread;
 use core::ffi::{c_char, c_int};
 
-pub use ps4k_macros::*;
+pub use korbis_macros::*;
 
 pub mod elf;
 pub mod thread;

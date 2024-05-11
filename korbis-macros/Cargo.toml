@@ -1,5 +1,5 @@
 [package]
-name = "ps4k-macros"
+name = "korbis-macros"
 version = "0.1.0"
 edition = "2021"
 

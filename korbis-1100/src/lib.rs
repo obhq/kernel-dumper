@@ -2,7 +2,7 @@
 
 use self::thread::Thread;
 use core::ffi::{c_char, c_int};
-use ps4k::offset;
+use korbis::offset;
 
 mod thread;
 
@@ -11,7 +11,7 @@ pub struct Kernel {
     elf: &'static [u8],
 }
 
-impl ps4k::Kernel for Kernel {
+impl korbis::Kernel for Kernel {
     type Thread = Thread;
 
     unsafe fn new(base: *const u8) -> Self {

@@ -1,8 +1,8 @@
 [package]
-name = "ps4k-1100"
+name = "korbis-1100"
 version = "0.1.0"
 edition = "2021"
 links = "orbiskernel"
 
 [dependencies]
-ps4k = { path = "../ps4k" }
+korbis = { path = "../korbis" }
