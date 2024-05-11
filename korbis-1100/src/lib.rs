@@ -1,10 +1,12 @@
 #![no_std]
 
+use self::file::File;
 use self::thread::Thread;
 use core::ffi::{c_char, c_int};
 use korbis::offset;
 use korbis::uio::UioSeg;
 
+mod file;
 mod thread;
 
 /// Implementation of [`ps4k::Kernel`] for 11.00.
@@ -12,6 +14,7 @@ mod thread;
 pub struct Kernel(&'static [u8]);
 
 impl korbis::Kernel for Kernel {
+    type File = File;
     type Thread = Thread;
 
     unsafe fn new(base: *const u8) -> Self {
@@ -21,6 +24,9 @@ impl korbis::Kernel for Kernel {
     unsafe fn elf(self) -> &'static [u8] {
         self.0
     }
+
+    #[offset(0x4161B0)]
+    unsafe fn fdrop(self, fp: *mut Self::File, td: *mut Self::Thread) -> c_int;
 
     #[offset(0xE63B0)]
     unsafe fn kern_openat(

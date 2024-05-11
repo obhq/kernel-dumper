@@ -22,9 +22,9 @@ fn transform_method(args: LitInt, item: Method) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         #unsafety fn #ident(#receiver, #params) #ret {
-            let ad = unsafe { self.elf().as_ptr().add(#offset) };
-            let fp: unsafe extern "C" fn(#params) #ret = unsafe { core::mem::transmute(ad) };
-            unsafe { fp(#args) }
+            let _addr = unsafe { self.elf().as_ptr().add(#offset) };
+            let _fp: unsafe extern "C" fn(#params) #ret = unsafe { core::mem::transmute(_addr) };
+            unsafe { _fp(#args) }
         }
     })
 }

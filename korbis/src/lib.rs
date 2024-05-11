@@ -1,6 +1,7 @@
 #![no_std]
 
 use self::elf::ProgramType;
+use self::file::File;
 use self::thread::Thread;
 use self::uio::UioSeg;
 use core::ffi::{c_char, c_int};
@@ -8,11 +9,13 @@ use core::ffi::{c_char, c_int};
 pub use korbis_macros::*;
 
 pub mod elf;
+pub mod file;
 pub mod thread;
 pub mod uio;
 
 /// Provides methods to access the PS4 kernel for a specific version.
 pub trait Kernel: Copy + Send + Sync + 'static {
+    type File: File;
     type Thread: Thread;
 
     /// # Safety
@@ -29,6 +32,13 @@ pub trait Kernel: Copy + Send + Sync + 'static {
     /// The returned slice can contains `PF_W` programs. That mean the memory covered by this slice
     /// can mutate at any time. The whole slice is guarantee to be readable.
     unsafe fn elf(self) -> &'static [u8];
+
+    /// # Panics
+    /// If [`File::refcnt()`] of `fp` is not zero.
+    ///
+    /// # Safety
+    /// - `fp` cannot be null.
+    unsafe fn fdrop(self, fp: *mut Self::File, td: *mut Self::Thread) -> c_int;
 
     /// # Safety
     /// - `td` cannot be null.
