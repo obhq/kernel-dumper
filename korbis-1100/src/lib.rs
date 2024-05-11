@@ -9,7 +9,7 @@ use korbis::uio::UioSeg;
 mod file;
 mod thread;
 
-/// Implementation of [`ps4k::Kernel`] for 11.00.
+/// Implementation of [`korbis::Kernel`] for 11.00.
 #[derive(Clone, Copy)]
 pub struct Kernel(&'static [u8]);
 
@@ -24,6 +24,15 @@ impl korbis::Kernel for Kernel {
     unsafe fn elf(self) -> &'static [u8] {
         self.0
     }
+
+    #[offset(0x4191C0)]
+    unsafe fn fget_write(
+        self,
+        td: *mut Self::Thread,
+        fd: c_int,
+        unused: c_int,
+        fp: *mut *mut Self::File,
+    ) -> c_int;
 
     #[offset(0x4161B0)]
     unsafe fn fdrop(self, fp: *mut Self::File, td: *mut Self::Thread) -> c_int;

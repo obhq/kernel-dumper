@@ -1,10 +1,12 @@
 #![no_std]
 
 use self::elf::ProgramType;
-use self::file::File;
+use self::file::{File, OwnedFile};
 use self::thread::Thread;
 use self::uio::UioSeg;
 use core::ffi::{c_char, c_int};
+use core::num::NonZeroI32;
+use core::ptr::null_mut;
 
 pub use korbis_macros::*;
 
@@ -14,6 +16,10 @@ pub mod thread;
 pub mod uio;
 
 /// Provides methods to access the PS4 kernel for a specific version.
+///
+/// Most methods here are a direct call to the kernel so most of them are unsafe. A safe wrapper for
+/// those methods are provides by [`KernelExt`], which is automatically implemented for any type
+/// that implement [`Kernel`].
 pub trait Kernel: Copy + Send + Sync + 'static {
     type File: File;
     type Thread: Thread;
@@ -32,6 +38,16 @@ pub trait Kernel: Copy + Send + Sync + 'static {
     /// The returned slice can contains `PF_W` programs. That mean the memory covered by this slice
     /// can mutate at any time. The whole slice is guarantee to be readable.
     unsafe fn elf(self) -> &'static [u8];
+
+    /// # Safety
+    /// `fp` cannot be null.
+    unsafe fn fget_write(
+        self,
+        td: *mut Self::Thread,
+        fd: c_int,
+        unused: c_int,
+        fp: *mut *mut Self::File,
+    ) -> c_int;
 
     /// # Panics
     /// If [`File::refcnt()`] of `fp` is not zero.
@@ -91,5 +107,24 @@ pub trait Kernel: Copy + Send + Sync + 'static {
         let len = end - (base as usize);
 
         core::slice::from_raw_parts(base, len)
+    }
+}
+
+/// Provides wrapper methods for methods on [`Kernel`].
+///
+/// This trait is automatically implemented for any type that implement [`Kernel`].
+pub trait KernelExt: Kernel {
+    fn fget_write(self, td: *mut Self::Thread, fd: c_int) -> Result<OwnedFile<Self>, NonZeroI32>;
+}
+
+impl<T: Kernel> KernelExt for T {
+    fn fget_write(self, td: *mut Self::Thread, fd: c_int) -> Result<OwnedFile<Self>, NonZeroI32> {
+        let mut fp = null_mut();
+        let errno = unsafe { self.fget_write(td, fd, 0, &mut fp) };
+
+        match NonZeroI32::new(errno) {
+            Some(v) => Err(v),
+            None => Ok(unsafe { OwnedFile::new(self, fp) }),
+        }
     }
 }

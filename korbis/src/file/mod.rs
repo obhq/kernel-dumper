@@ -14,6 +14,15 @@ pub struct OwnedFile<K: Kernel> {
     file: *mut K::File,
 }
 
+impl<K: Kernel> OwnedFile<K> {
+    /// # Safety
+    /// `file` cannot be null and the caller must own a strong reference to it. This method do
+    /// **not** increase the reference count of this file.
+    pub unsafe fn new(kernel: K, file: *mut K::File) -> Self {
+        Self { kernel, file }
+    }
+}
+
 impl<K: Kernel> Drop for OwnedFile<K> {
     fn drop(&mut self) {
         // See Drop implementation on Arc how this thing work.
