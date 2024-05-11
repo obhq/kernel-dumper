@@ -60,7 +60,13 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
     }
 
     fn fsync(&self, fd: c_int) -> Result<(), NonZeroI32> {
-        Ok(())
+        let td = Thread::current();
+        let errno = unsafe { self.kernel.kern_fsync(td, fd, 1) };
+
+        match NonZeroI32::new(errno) {
+            Some(v) => Err(v),
+            None => Ok(()),
+        }
     }
 
     fn close(&self, fd: c_int) -> Result<(), NonZeroI32> {
