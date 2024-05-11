@@ -75,6 +75,10 @@ pub trait Kernel: Copy + Send + Sync + 'static {
     unsafe fn kern_close(self, td: *mut Self::Thread, fd: c_int) -> c_int;
 
     /// # Safety
+    /// `td` cannot be null.
+    unsafe fn kern_fsync(self, td: *mut Self::Thread, fd: c_int, fullsync: c_int) -> c_int;
+
+    /// # Safety
     /// - `td` cannot be null.
     /// - `auio` cannot be null.
     unsafe fn kern_writev(self, td: *mut Self::Thread, fd: c_int, auio: *mut Self::Uio) -> c_int;

@@ -54,6 +54,9 @@ impl korbis::Kernel for Kernel {
     #[offset(0x416920)]
     unsafe fn kern_close(self, td: *mut Self::Thread, fd: c_int) -> c_int;
 
+    #[offset(0xEAD50)]
+    unsafe fn kern_fsync(self, td: *mut Self::Thread, fd: c_int, fullsync: c_int) -> c_int;
+
     #[offset(0xDD340)]
     unsafe fn kern_writev(self, td: *mut Self::Thread, fd: c_int, auio: *mut Self::Uio) -> c_int;
 }
