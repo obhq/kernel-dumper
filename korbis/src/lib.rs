@@ -3,7 +3,7 @@
 use self::elf::ProgramType;
 use self::file::{File, OwnedFile};
 use self::thread::Thread;
-use self::uio::UioSeg;
+use self::uio::{Uio, UioSeg};
 use core::ffi::{c_char, c_int};
 use core::num::NonZeroI32;
 use core::ptr::null_mut;
@@ -23,6 +23,7 @@ pub mod uio;
 pub trait Kernel: Copy + Send + Sync + 'static {
     type File: File;
     type Thread: Thread;
+    type Uio: Uio;
 
     /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the
@@ -72,6 +73,11 @@ pub trait Kernel: Copy + Send + Sync + 'static {
     /// # Safety
     /// `td` cannot be null.
     unsafe fn kern_close(self, td: *mut Self::Thread, fd: c_int) -> c_int;
+
+    /// # Safety
+    /// - `td` cannot be null.
+    /// - `auio` cannot be null.
+    unsafe fn kern_writev(self, td: *mut Self::Thread, fd: c_int, auio: *mut Self::Uio) -> c_int;
 
     /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the

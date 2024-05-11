@@ -2,12 +2,14 @@
 
 use self::file::File;
 use self::thread::Thread;
+use self::uio::Uio;
 use core::ffi::{c_char, c_int};
 use korbis::offset;
 use korbis::uio::UioSeg;
 
 mod file;
 mod thread;
+mod uio;
 
 /// Implementation of [`korbis::Kernel`] for 11.00.
 #[derive(Clone, Copy)]
@@ -16,6 +18,7 @@ pub struct Kernel(&'static [u8]);
 impl korbis::Kernel for Kernel {
     type File = File;
     type Thread = Thread;
+    type Uio = Uio;
 
     unsafe fn new(base: *const u8) -> Self {
         Self(Self::get_mapped_elf(base))
@@ -50,4 +53,7 @@ impl korbis::Kernel for Kernel {
 
     #[offset(0x416920)]
     unsafe fn kern_close(self, td: *mut Self::Thread, fd: c_int) -> c_int;
+
+    #[offset(0xDD340)]
+    unsafe fn kern_writev(self, td: *mut Self::Thread, fd: c_int, auio: *mut Self::Uio) -> c_int;
 }
