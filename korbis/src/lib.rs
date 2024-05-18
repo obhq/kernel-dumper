@@ -23,7 +23,7 @@ pub mod uio;
 pub trait Kernel: Copy + Send + Sync + 'static {
     type File: File;
     type Thread: Thread;
-    type Uio: Uio;
+    type Uio: Uio<Self>;
 
     /// # Safety
     /// `base` must point to a valid address of the kernel. Behavior is undefined if format of the

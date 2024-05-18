@@ -3,9 +3,8 @@ use crate::DumpMethod;
 use core::ffi::{c_int, CStr};
 use core::num::NonZeroI32;
 use korbis::thread::Thread;
-use korbis::uio::UioSeg;
+use korbis::uio::{IoVec, Uio, UioRw, UioSeg};
 use korbis::Kernel;
-use x86_64::registers::control::Cr0;
 
 /// Implementation of [`DumpMethod`] using internal kernel functions.
 ///
@@ -15,17 +14,7 @@ pub struct DirectMethod<K> {
 }
 
 impl<K: Kernel> DirectMethod<K> {
-    #[cfg(fw = "1100")]
     pub fn new(kernel: K) -> Self {
-        // Restore kmem_alloc patch done by PPPwn.
-        let base = unsafe { kernel.elf().as_ptr().cast_mut() };
-        let cr0 = Cr0::read_raw();
-
-        unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
-        unsafe { base.add(0x245EDC).write(3) };
-        unsafe { base.add(0x245EE4).write(3) };
-        unsafe { Cr0::write_raw(cr0) };
-
         Self { kernel }
     }
 }
@@ -56,7 +45,21 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
     }
 
     fn write(&self, fd: c_int, buf: *const u8, len: usize) -> Result<usize, NonZeroI32> {
-        Ok(len)
+        // Setup iovec.
+        let mut iov = IoVec {
+            ptr: buf.cast_mut(),
+            len,
+        };
+
+        // Write.
+        let td = Thread::current();
+        let mut io = unsafe { Uio::new(td, UioRw::Write, UioSeg::Kernel, &mut iov, 1).unwrap() };
+        let errno = unsafe { self.kernel.kern_writev(td, fd, &mut io) };
+
+        match NonZeroI32::new(errno) {
+            Some(v) => Err(v),
+            None => Ok(unsafe { (*td).ret(0) }),
+        }
     }
 
     fn fsync(&self, fd: c_int) -> Result<(), NonZeroI32> {

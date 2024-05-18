@@ -15,9 +15,7 @@ pub struct Uio {
     td: *mut Thread,
 }
 
-impl korbis::uio::Uio for Uio {
-    type Kernel = Kernel;
-
+impl korbis::uio::Uio<Kernel> for Uio {
     unsafe fn new(
         td: *mut Thread,
         op: UioRw,

@@ -1,9 +1,7 @@
 use crate::Kernel;
 
 /// Represents `uio` structure.
-pub trait Uio: Sized {
-    type Kernel: Kernel;
-
+pub trait Uio<K: Kernel>: Sized {
     /// Returns [`None`] if `len` is geater than [`Uio::vec_max()`] or total length of `iov` is
     /// greater than [`Uio::io_max()`].
     ///
@@ -11,7 +9,7 @@ pub trait Uio: Sized {
     /// - `td` cannot be null.
     /// - `iov` cannot be null and must be valid up to `len`.
     unsafe fn new(
-        td: *mut <Self::Kernel as Kernel>::Thread,
+        td: *mut K::Thread,
         op: UioRw,
         seg: UioSeg,
         iov: *mut IoVec,
