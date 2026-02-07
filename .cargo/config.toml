@@ -1,7 +1,6 @@
 [build]
 target = "x86_64-unknown-none"
-rustflags = ["--cfg", "fw=\"1100\"", "--cfg", "method=\"direct\""]
+rustflags = ["--cfg", "fw=\"1100\"", "--cfg", "method=\"direct\"", "-Z", "unstable-options", "-C", "panic=immediate-abort"]
 
 [unstable]
-build-std = ["alloc", "core", "panic_abort"]
-build-std-features = ["panic_immediate_abort"]
+build-std = ["alloc", "core"]
