@@ -4,15 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitflags = "2.5.0"
-korbis = { path = "korbis" }
+okf = { git = "https://github.com/obhq/kernel-framework.git" }
 x86_64 = { version = "0.15.1", features = ["instructions"], default-features = false }
 
 [target.'cfg(fw = "1100")'.dependencies]
-korbis-1100 = { path = "korbis-1100" }
+kernel = { package = "ps4-1100", git = "https://github.com/obhq/kernel-framework.git" }
 
 [profile.release]
 opt-level = "z"
-
-[workspace]
-members = ["korbis", "korbis-1100", "korbis-macros"]

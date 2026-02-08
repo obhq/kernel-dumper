@@ -1,10 +1,12 @@
-use crate::method::{OpenFlags, OwnedFd};
+use crate::method::OwnedFd;
 use crate::DumpMethod;
 use core::ffi::{c_int, CStr};
 use core::num::NonZeroI32;
-use korbis::thread::Thread;
-use korbis::uio::{IoVec, Uio, UioRw, UioSeg};
-use korbis::Kernel;
+use okf::fd::OpenFlags;
+use okf::pcpu::Pcpu;
+use okf::thread::Thread;
+use okf::uio::{IoVec, Uio, UioSeg};
+use okf::Kernel;
 
 /// Implementation of [`DumpMethod`] using internal kernel functions.
 ///
@@ -25,17 +27,11 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
         path: &CStr,
         flags: OpenFlags,
         mode: c_int,
-    ) -> Result<OwnedFd<Self>, NonZeroI32> {
-        let td = Thread::current();
+    ) -> Result<OwnedFd<'_, Self>, NonZeroI32> {
+        let td = K::Pcpu::curthread();
         let errno = unsafe {
-            self.kernel.kern_openat(
-                td,
-                -100,
-                path.as_ptr(),
-                UioSeg::Kernel,
-                flags.bits() as _,
-                mode,
-            )
+            self.kernel
+                .kern_openat(td, -100, path.as_ptr(), UioSeg::Kernel, flags, mode)
         };
 
         match NonZeroI32::new(errno) {
@@ -52,8 +48,8 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
         };
 
         // Write.
-        let td = Thread::current();
-        let mut io = unsafe { Uio::new(td, UioRw::Write, UioSeg::Kernel, &mut iov, 1).unwrap() };
+        let td = K::Pcpu::curthread();
+        let mut io = unsafe { Uio::write(&mut iov, td).unwrap() };
         let errno = unsafe { self.kernel.kern_writev(td, fd, &mut io) };
 
         match NonZeroI32::new(errno) {
@@ -63,7 +59,7 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
     }
 
     fn fsync(&self, fd: c_int) -> Result<(), NonZeroI32> {
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let errno = unsafe { self.kernel.kern_fsync(td, fd, 1) };
 
         match NonZeroI32::new(errno) {
@@ -73,7 +69,7 @@ impl<K: Kernel> DumpMethod for DirectMethod<K> {
     }
 
     fn close(&self, fd: c_int) -> Result<(), NonZeroI32> {
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let errno = unsafe { self.kernel.kern_close(td, fd) };
 
         match NonZeroI32::new(errno) {

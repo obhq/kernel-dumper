@@ -1,14 +1,15 @@
 #![no_std]
 #![no_main]
 
-use crate::method::{DumpMethod, OpenFlags};
+use crate::method::DumpMethod;
 use core::arch::global_asm;
 use core::cmp::min;
 use core::ffi::c_int;
 use core::mem::{size_of_val, zeroed};
 use core::panic::PanicInfo;
-use korbis::Kernel;
-use x86_64::registers::model_specific::LStar;
+use kernel::Kernel;
+use okf::fd::OpenFlags;
+use okf::MappedKernel;
 
 #[cfg(method = "direct")]
 mod direct;
@@ -67,12 +68,8 @@ global_asm!(
 
 #[no_mangle]
 pub extern "C" fn main(_: *const u8) {
-    // Get base address of the kernel.
-    let aslr = LStar::read() - 0xffffffff822001c0; // AFAIK syscall handler is same for all version.
-    let base = aslr + 0xffffffff82200000;
-    let kernel = unsafe { init(base.as_ptr()) };
-
     // Setup dumping method.
+    let kernel = Kernel::default();
     #[cfg(method = "syscall")]
     let method = unsafe { crate::syscall::SyscallMethod::new(&kernel) };
     #[cfg(method = "direct")]
@@ -91,15 +88,38 @@ pub extern "C" fn main(_: *const u8) {
         }
     };
 
-    // Dump.
-    let mut data = unsafe { kernel.elf() };
+    // Get ELF loaded size.
+    let base = kernel.addr();
+    let e_phnum: usize = unsafe { base.add(0x38).cast::<u16>().read().into() };
+    let progs = unsafe { core::slice::from_raw_parts(base.add(0x40), e_phnum * 0x38) };
+    let mut end = base as usize;
 
-    while !data.is_empty() {
+    for h in progs.chunks_exact(0x38) {
+        // Skip non-loadable.
+        let ty = u32::from_le_bytes(h[0x00..0x04].try_into().unwrap());
+
+        if !matches!(ty, 0x1 | 0x61000010) {
+            continue;
+        }
+
+        // Update end address.
+        let addr = usize::from_le_bytes(h[0x10..0x18].try_into().unwrap());
+        let len = usize::from_le_bytes(h[0x28..0x30].try_into().unwrap());
+        let align = usize::from_le_bytes(h[0x30..0x38].try_into().unwrap());
+
+        assert!(addr >= end); // Just in case if Sony re-order the programs.
+
+        end = addr + len.next_multiple_of(align);
+    }
+
+    // Dump.
+    let mut len = end - (base as usize);
+    let mut next = base;
+
+    while len != 0 {
         // Write file.
         let fd = out.as_raw_fd();
-        let len = min(data.len(), 0x4000);
-        let buf = &data[..len];
-        let written = match method.write(fd, buf.as_ptr(), buf.len()) {
+        let written = match method.write(fd, next, min(len, 0x4000)) {
             Ok(v) => v,
             Err(_) => {
                 notify(&method, "Failed to write /mnt/usb0/kernel.elf");
@@ -112,7 +132,8 @@ pub extern "C" fn main(_: *const u8) {
             return;
         }
 
-        data = &data[written..];
+        next = unsafe { next.add(written) };
+        len -= written;
     }
 
     // Sync.
@@ -163,11 +184,6 @@ fn notify(method: &impl DumpMethod, msg: impl AsRef<[u8]>) {
             size_of_val(&data),
         )
         .ok();
-}
-
-#[cfg(fw = "1100")]
-unsafe fn init(base: *const u8) -> impl Kernel {
-    korbis_1100::Kernel::new(base)
 }
 
 #[panic_handler]

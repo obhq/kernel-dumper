@@ -6,10 +6,6 @@
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
   "rust-analyzer.cargo.allTargets": false,
-  "rust-analyzer.cargo.extraArgs": [
-    "-Z", "build-std=std,panic_abort",
-    "-Z", "build-std-features=panic_immediate_abort"
-  ],
   "rust-analyzer.imports.granularity.enforce": true,
   "rust-analyzer.imports.granularity.group": "module",
   "rust-analyzer.imports.group.enable": false
