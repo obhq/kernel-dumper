@@ -4,6 +4,8 @@ local method = nil
 
 if fw == '11.00' then
   method = args.dm or 'direct'
+elseif fw == '11.52' then
+  method = 'syscall'
 end
 
 -- Build environment variables.
