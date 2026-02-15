@@ -1,4 +1,7 @@
 {
+  "[lua]": {
+    "editor.tabSize": 2
+  },
   "[rust]": {
     "editor.formatOnSave": true
   },

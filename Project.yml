@@ -1,0 +1,16 @@
+commands:
+  build:
+    description: Build payload
+    args:
+      dm:
+        description: Override dump method
+        long: method
+        short: m
+        type: string
+        allowed-values: ['direct', 'syscall']
+      fw:
+        description: Target firmware
+        type: string
+        allowed-values: ['11.00']
+        required: true
+    script: scripts/build.lua

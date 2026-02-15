@@ -13,6 +13,8 @@ jobs:
     steps:
     - name: Check out repository
       uses: actions/checkout@v6
+    - name: Install additional tools
+      run: cargo install project
     - name: Install Rust nightly
       run: |
         rustup toolchain install nightly
@@ -22,7 +24,7 @@ jobs:
     - name: Install Rust components
       run: rustup component add rust-src llvm-tools
     - name: Build
-      run: ./build.py
+      run: project build 11.00
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:

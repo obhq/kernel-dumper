@@ -55,6 +55,8 @@ The value for `Base Address` is `VirtAddr` of the first `LOAD` program (e.g. `0x
 ### Prerequisites
 
 - Rust on nightly channel
+- [Project](https://github.com/ultimaweapon/project)
+  - You can install with `cargo install project`
 
 ### Install additional Rust component
 
@@ -65,7 +67,20 @@ rustup component add rust-src llvm-tools
 ### Build
 
 ```sh
-./build.py
+project build 11.00
+```
+
+## Development
+
+You need to create `.cargo/config.toml` with the following content for rust-analyzer to work correctly:
+
+```toml
+[build]
+target = "x86_64-unknown-none"
+rustflags = ["--cfg", "fw=\"1100\"", "--cfg", "method=\"direct\"", "-Z", "unstable-options", "-C", "panic=immediate-abort"]
+
+[unstable]
+build-std = ["alloc", "core"]
 ```
 
 ## License
