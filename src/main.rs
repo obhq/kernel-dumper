@@ -71,7 +71,7 @@ pub extern "C" fn main(_: *const u8) {
     // Setup dumping method.
     let kernel = Kernel::default();
     #[cfg(method = "syscall")]
-    let method = unsafe { crate::syscall::SyscallMethod::new(&kernel) };
+    let method = unsafe { crate::syscall::SyscallMethod::new(kernel) };
     #[cfg(method = "direct")]
     let method = crate::direct::DirectMethod::new(kernel);
 

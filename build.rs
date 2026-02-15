@@ -7,5 +7,5 @@ fn main() {
 
     println!("cargo::rustc-link-arg-bins=-T{link}");
     println!("cargo::rustc-check-cfg=cfg(method, values(\"direct\", \"syscall\"))");
-    println!("cargo::rustc-check-cfg=cfg(fw, values(\"1100\"))");
+    println!("cargo::rustc-check-cfg=cfg(fw, values(\"1100\", \"1152\"))");
 }

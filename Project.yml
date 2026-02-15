@@ -8,9 +8,13 @@ commands:
         short: m
         type: string
         allowed-values: ['direct', 'syscall']
+      patch-copyin:
+        description: Remove address checkin in copyin and copyinstr
+        long: patch-copyin
+        type: bool
       fw:
         description: Target firmware
         type: string
-        allowed-values: ['11.00']
+        allowed-values: ['11.00', '11.52']
         required: true
     script: scripts/build.lua

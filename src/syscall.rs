@@ -1,10 +1,11 @@
-use crate::method::{DumpMethod, OpenFlags, OwnedFd};
+use crate::method::{DumpMethod, OwnedFd};
 use core::ffi::{c_int, c_void, CStr};
 use core::mem::transmute;
 use core::num::NonZeroI32;
-use korbis::thread::Thread;
-use korbis::Kernel;
-use x86_64::registers::control::Cr0;
+use okf::fd::OpenFlags;
+use okf::pcpu::Pcpu;
+use okf::thread::Thread;
+use okf::Kernel;
 
 /// Implementation of [`DumpMethod`] using syscalls.
 ///
@@ -18,18 +19,26 @@ pub struct SyscallMethod<K: Kernel> {
 }
 
 impl<K: Kernel> SyscallMethod<K> {
-    pub unsafe fn new(kernel: &K) -> Self {
+    pub unsafe fn new(kernel: K) -> Self {
         // Remove address checking from copyin, copyout and copyinstr.
-        let base = kernel.elf().as_ptr();
-        let cr0 = Cr0::read_raw();
+        let base = kernel.addr();
 
-        unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
-        unsafe { Self::patch_kernel(base.cast_mut()) };
-        unsafe { Cr0::write_raw(cr0) };
+        #[cfg(feature = "patch-copyin")]
+        {
+            use x86_64::registers::control::Cr0;
+
+            let cr0 = Cr0::read_raw();
+
+            unsafe { Cr0::write_raw(cr0 & !(1 << 16)) };
+            unsafe { Self::patch_kernel(base.cast_mut()) };
+            unsafe { Cr0::write_raw(cr0) };
+        }
 
         Self {
             #[cfg(fw = "1100")]
             sysents: transmute(base.add(0x1101760)),
+            #[cfg(fw = "1152")]
+            sysents: transmute(base.add(0x1102B70)),
         }
     }
 
@@ -39,9 +48,7 @@ impl<K: Kernel> SyscallMethod<K> {
     #[cfg(fw = "1100")]
     unsafe fn patch_kernel(base: *mut u8) {
         let patches = [
-            (0x2DDF42usize, [0x90u8; 2].as_slice()), // copyout_patch1
-            (0x2DDF4E, &[0x90; 3]),                  // copyout_patch2
-            (0x2DE037, &[0x90; 2]),                  // copyin_patch1
+            (0x2DE037usize, [0x90u8; 2].as_slice()), // copyin_patch1
             (0x2DE043, &[0x90; 3]),                  // copyin_patch2
             (0x2DE4E3, &[0x90; 2]),                  // copyinstr_patch1
             (0x2DE4EF, &[0x90; 3]),                  // copyinstr_patch2
@@ -61,9 +68,9 @@ impl<K: Kernel> DumpMethod for SyscallMethod<K> {
         path: &CStr,
         flags: OpenFlags,
         mode: c_int,
-    ) -> Result<OwnedFd<Self>, NonZeroI32> {
+    ) -> Result<OwnedFd<'_, Self>, NonZeroI32> {
         // Setup arguments.
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let args = [path.as_ptr() as usize, flags.bits() as usize, mode as usize];
 
         // Invoke handler.
@@ -80,7 +87,7 @@ impl<K: Kernel> DumpMethod for SyscallMethod<K> {
 
     fn write(&self, fd: c_int, buf: *const u8, len: usize) -> Result<usize, NonZeroI32> {
         // Setup arguments.
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let args = [fd as usize, buf as usize, len];
 
         // Invoke handler.
@@ -95,7 +102,7 @@ impl<K: Kernel> DumpMethod for SyscallMethod<K> {
 
     fn fsync(&self, fd: c_int) -> Result<(), NonZeroI32> {
         // Setup arguments.
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let args = [fd as usize];
 
         // Invoke handler.
@@ -110,7 +117,7 @@ impl<K: Kernel> DumpMethod for SyscallMethod<K> {
 
     fn close(&self, fd: c_int) -> Result<(), NonZeroI32> {
         // Setup arguments.
-        let td = Thread::current();
+        let td = K::Pcpu::curthread();
         let args = [fd as usize];
 
         // Invoke handler.

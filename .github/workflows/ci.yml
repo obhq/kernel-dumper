@@ -7,26 +7,29 @@ on:
     branches:
     - main
 jobs:
-  build:
-    name: Build
+  pre-build:
+    name: Pre-build
     runs-on: ubuntu-latest
     steps:
     - name: Check out repository
       uses: actions/checkout@v6
-    - name: Install additional tools
-      run: cargo install project
     - name: Install Rust nightly
       run: |
         rustup toolchain install nightly
         rustup component add --toolchain nightly rustfmt
     - name: Check Rust styles
       run: cargo fmt --check
-    - name: Install Rust components
-      run: rustup component add rust-src llvm-tools
-    - name: Build
-      run: project build 11.00
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: kernel-dumper
-        path: kernel-dumper.bin
+  build-1100:
+    name: Build (11.00)
+    uses: /.github/workflows/build.yml
+    with:
+      build-args: '11.00'
+      artifact: '11.00'
+    needs: pre-build
+  build-1152:
+    name: Build (11.52)
+    uses: /.github/workflows/build.yml
+    with:
+      build-args: '11.52'
+      artifact: '11.52'
+    needs: pre-build

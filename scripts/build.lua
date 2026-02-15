@@ -6,7 +6,7 @@ if fw == '11.00' then
   method = args.dm or 'direct'
 end
 
--- Build env.
+-- Build environment variables.
 local env = {
   RUSTFLAGS = string.format(
     '--cfg fw="%s" --cfg method="%s" -Z unstable-options -C panic=immediate-abort',
@@ -15,16 +15,23 @@ local env = {
   )
 }
 
--- Build.
-local elf = nil
-local cargo <close> = os.spawn(
-  {'cargo', stdout = 'pipe', env = env},
+-- Build arguments.
+local spawn = {
   'build',
   '-r',
   '--target', 'x86_64-unknown-none',
   '-Z', 'build-std=alloc,core',
   '--message-format', 'json-render-diagnostics'
-)
+}
+
+if args['patch-copyin'] then
+  spawn[#spawn + 1] = '-F'
+  spawn[#spawn + 1] = 'patch-copyin'
+end
+
+-- Build.
+local elf = nil
+local cargo <close> = os.spawn({'cargo', stdout = 'pipe', env = env}, table.unpack(spawn))
 
 while true do
   -- Read message.
