@@ -21,14 +21,14 @@ jobs:
       run: cargo fmt --check
   build-1100:
     name: Build (11.00)
-    uses: /.github/workflows/build.yml
+    uses: ./.github/workflows/build.yml
     with:
       build-args: '11.00'
       artifact: '11.00'
     needs: pre-build
   build-1152:
     name: Build (11.52)
-    uses: /.github/workflows/build.yml
+    uses: ./.github/workflows/build.yml
     with:
       build-args: '11.52'
       artifact: '11.52'
